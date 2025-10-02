@@ -1,7 +1,5 @@
 package net.cmr.easyauth.controller;
 
-import org.springframework.web.context.request.NativeWebRequest;
-
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import net.cmr.easyauth.service.LoginService;

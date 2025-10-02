@@ -1,10 +1,14 @@
 package net.cmr.easyauth.entity;
 
-import java.security.InvalidParameterException;
+import java.util.Collection;
+import java.util.Collections;
 
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 
-import com.fasterxml.jackson.databind.exc.InvalidFormatException;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -16,89 +20,110 @@ import jakarta.persistence.UniqueConstraint;
 
 @Entity
 @Table(name = "LOGIN", uniqueConstraints = @UniqueConstraint(columnNames = {"ID", "EMAIL"}))
-public class Login {
+public class Login implements UserDetails {
     
+    /*
+     * TODO: Library users should be able to store additional information in users.
+     * Find a way for programmers to create supplementary information for logins
+     * using foreign keys (one to many OR one to one support)
+     */
+    public static final String USER_ROLE = "USER";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "ID", nullable = false)
     private Long id;
+    // TODO: get rid of this, have username be the primary credential
+    @Deprecated
     @Column(name = "EMAIL", nullable = false)
     private String email;
     @Column(name = "USERNAME", nullable = false)
     private String username;
     @Column(name = "ROLE", nullable = false)
     private String role;
+    @JsonIgnore
     @Column(name = "PASSWORD", nullable = false)
     private String passwordHash;
+    @Column(name = "LOCKED", nullable = false)
+    private boolean locked;
 
-    public static final String USER_ROLE = "USER";
+    private Collection<GrantedAuthority> authorities;
 
-    public Login() { /* No-args constructor */}
-
-    public Login(RegisterRequest registerRequest) {
-        this(registerRequest.getEmail(), registerRequest.getUsername(), registerRequest.getPlaintextPassword(), USER_ROLE);
+    public Login(RegisterRequest registerRequest, Collection<GrantedAuthority> authorities) {
+        this(registerRequest.getEmail(), registerRequest.getUsername(), registerRequest.getPlaintextPassword(), authorities);
     }
 
-    public Login(String email, String username, String password, String role) {
+    public Login(String email, String username, String password, Collection<GrantedAuthority> authorities) {
         this.id = null;
         this.email = email;
         this.username = username;
-        this.role = role;
+        this.authorities = Collections.unmodifiableCollection(authorities);
+
+        // this.role = role;
         String salt = BCrypt.gensalt();
         this.passwordHash = BCrypt.hashpw(password, salt);
+        this.locked = false;
     }
 
+    @JsonIgnore
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return authorities;
+    }
 
-    public static String getEmailFromCombinedCredential(String combinedCredential) throws InvalidParameterException {
-        String[] split = combinedCredential.split(":");
-        if (split.length != 2) {
-            throw new InvalidParameterException();
-        }
-        return split[0];
+    public void setRole(String role) {
+        this.role = role;
     }
-    
-    public static String getUsernameFromCombinedCredential(String combinedCredential) throws InvalidParameterException {
-        String[] split = combinedCredential.split(":");
-        if (split.length != 2) {
-            throw new InvalidParameterException();
-        }
-        return split[1];
-    }
-    
+
     public Long getId() {
         return id;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public String getCombinedPrimaryCredential() {
-        return getEmail() + ":" + getUsername();
-    }
-
-    public String getPasswordHash() {
-        return passwordHash;
     }
 
     public String getRole() {
         return role;
     }
 
-    public void setEmail(String email) {
-        this.email = email;
+    @Override
+    public String getPassword() {
+        return passwordHash;
     }
 
-    public void setUsername(String username) {
-        this.username = username;
+    @Override
+    public String getUsername() {
+        return username;
     }
 
-    public void setRole(String role) {
-        this.role = role;
+    @Deprecated
+    public String getEmail() {
+        return email;
+    }
+
+    @Override
+    @JsonIgnore
+    public boolean isEnabled() {
+        return UserDetails.super.isEnabled();
+    }
+
+    @Override
+    @JsonIgnore
+    public boolean isAccountNonExpired() {
+        return UserDetails.super.isAccountNonExpired();
+    }
+
+    @Override
+    @JsonIgnore
+    public boolean isAccountNonLocked() {
+        return !locked;
+    }
+
+    @Override
+    @JsonIgnore
+    public boolean isCredentialsNonExpired() {
+        return UserDetails.super.isCredentialsNonExpired();
+    }
+
+    public void setLocked(boolean shouldLock) {
+        this.locked = shouldLock;
     }
 
 }

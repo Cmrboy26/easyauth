@@ -1,6 +1,5 @@
 package net.cmr.easyauth.service;
 
-import java.nio.charset.Charset;
 import java.util.Base64;
 import java.util.Date;
 import java.util.concurrent.CompletableFuture;
@@ -11,11 +10,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.Nullable;
 import org.springframework.scheduling.annotation.Async;
-import org.springframework.security.crypto.bcrypt.BCrypt;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import io.jsonwebtoken.Claims;
@@ -29,7 +27,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import net.cmr.easyauth.AuthMessages;
 import net.cmr.easyauth.config.SecurityConfig;
 import net.cmr.easyauth.controller.CookieUtils;
-import net.cmr.easyauth.entity.ElevateRequest;
+import net.cmr.easyauth.entity.AdminRequest;
 import net.cmr.easyauth.entity.Login;
 import net.cmr.easyauth.entity.LoginRequest;
 import net.cmr.easyauth.entity.RegisterRequest;
@@ -81,7 +79,7 @@ public class LoginService {
         }
 
         Date expirationDate = new Date(System.currentTimeMillis() + 1000 * jwtExpirationSeconds);
-        String jwt = Jwts.builder().setExpiration(expirationDate).setSubject(login.getCombinedPrimaryCredential()).signWith(secretKey).compact();
+        String jwt = Jwts.builder().setExpiration(expirationDate).setSubject(login.getId()+"").signWith(secretKey).compact();
         Cookie cookie = CookieUtils.createJwtCookie(jwt, jwtExpirationSeconds);
         response.addCookie(cookie);
 
@@ -104,8 +102,11 @@ public class LoginService {
         return CompletableFuture.completedFuture(ResponseEntity.ok().build());
     }
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     private boolean validPassword(Login login, String plaintextPassword) {
-        return BCrypt.checkpw(plaintextPassword, login.getPasswordHash());
+        return passwordEncoder.matches(plaintextPassword, login.getPassword());
     }
 
     @Async
@@ -119,29 +120,42 @@ public class LoginService {
     }
 
     @Async
-    public CompletableFuture<ResponseEntity<String>> elevateRole(ElevateRequest elevateRequest) {
-        if (!SecurityConfig.isValidRole(elevateRequest.getRole())) {
+    public CompletableFuture<ResponseEntity<String>> elevateRole(AdminRequest elevateRequest) {
+        String role = elevateRequest.getValue();
+        if (!SecurityConfig.isValidRole(role)) {
             return CompletableFuture.completedFuture(ResponseEntity.badRequest().body(AuthMessages.INVALID_ROLE));
         }
         Login login = loginRepository.findByUsernameOrEmail(elevateRequest.getPrimaryCredential(), elevateRequest.getPrimaryCredential());
         if (login == null) {
             return CompletableFuture.completedFuture(ResponseEntity.badRequest().body(AuthMessages.MISSING_USER));
         }
-        login.setRole(elevateRequest.getRole());
+        login.setRole(role);
+        loginRepository.save(login);
+        return CompletableFuture.completedFuture(ResponseEntity.ok().body(Boolean.toString(true)));
+    }
+
+    @Async
+    public CompletableFuture<ResponseEntity<String>> lockUser(AdminRequest elevateRequest) {
+        String lockPredicate = elevateRequest.getValue();
+        boolean shouldLock = Boolean.parseBoolean(lockPredicate);
+        if (!shouldLock && !"false".equalsIgnoreCase(lockPredicate)) {
+            return CompletableFuture.completedFuture(ResponseEntity.badRequest().body(AuthMessages.INVALID_BOOLEAN));
+        }
+        Login login = loginRepository.findByUsernameOrEmail(elevateRequest.getPrimaryCredential(), elevateRequest.getPrimaryCredential());
+        if (login == null) {
+            return CompletableFuture.completedFuture(ResponseEntity.badRequest().body(AuthMessages.MISSING_USER));
+        }
+        login.setLocked(shouldLock);
         loginRepository.save(login);
         return CompletableFuture.completedFuture(ResponseEntity.ok().body(Boolean.toString(true)));
     }
 
     public static boolean isActiveJwsToken(String jwt, @Nullable LoginRepository repository) {
         try {
-            String combinedCredential = getCombinedCredentialFromJwt(jwt);
+            String idString = getIdFromJwt(jwt);
             if (repository != null) {
-                String username = Login.getUsernameFromCombinedCredential(combinedCredential);
-                String email = Login.getEmailFromCombinedCredential(combinedCredential);
-
-                Login login = repository.findByUsernameOrEmail(username, email);
-                boolean valid = login != null;
-                return valid;
+                Long id = Long.parseLong(idString);
+                return repository.findById(id).isPresent();
             }
             return true;
         } catch (JwtException e) {
@@ -167,11 +181,11 @@ public class LoginService {
     }
 
     /**
-     * Extracts the subject (combined credential) from a JWT token
+     * Extracts the subject from a JWT token
      * @param jwt the JWT token
-     * @return the subject from the JWT claims
+     * @return the subject from the JWT claims. Will be the same type as the ID in the {@link Login} class, most likely Long
      */
-    public static String getCombinedCredentialFromJwt(String jwt) throws JwtException {
+    public static String getIdFromJwt(String jwt) throws JwtException {
         return parseJwtClaims(jwt).getBody().getSubject();
     }
     

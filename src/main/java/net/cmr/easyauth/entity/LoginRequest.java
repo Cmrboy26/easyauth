@@ -1,13 +1,5 @@
 package net.cmr.easyauth.entity;
 
-import java.util.concurrent.Callable;
-import java.util.function.Consumer;
-
-import org.springframework.boot.util.LambdaSafe.Callback;
-import org.springframework.security.crypto.bcrypt.BCrypt;
-
-import net.cmr.easyauth.repository.LoginRepository;
-
 public class LoginRequest {
     
     /**

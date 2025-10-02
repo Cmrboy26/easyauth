@@ -3,6 +3,7 @@ package net.cmr.easyauth.security;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Objects;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.lang.NonNull;
@@ -38,20 +39,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
             
             try {
-                String combinedCredential = LoginService.getCombinedCredentialFromJwt(jwt);
-                String username = Login.getUsernameFromCombinedCredential(combinedCredential);
-                String email = Login.getEmailFromCombinedCredential(combinedCredential);
-                
+                String idString = LoginService.getIdFromJwt(jwt);
+                Long id = Long.parseLong(idString);
                 // Find the user in the database
-                Login login = loginRepository.findByUsernameOrEmail(username, email);
-                if (login != null) {
-                    ArrayList<SimpleGrantedAuthority> authorities = new ArrayList<>();
-                    authorities.add(new SimpleGrantedAuthority("ROLE_" + login.getRole()));
-                    
+                Optional<Login> login = loginRepository.findById(id);
+                if (login.isPresent()) {
                     Authentication authentication = new UsernamePasswordAuthenticationToken(
-                        login.getUsername(),
+                        login.get().getUsername(),
                         null,
-                        authorities
+                        login.get().getAuthorities()
                     );
                     
                     SecurityContextHolder.getContext().setAuthentication(authentication);

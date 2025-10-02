@@ -1,3 +1,7 @@
+PROBLEM: Creating a program for authentication when creating a small project is time consuming and unneccesary.
+
+SOLUTION: Build a scalable library, based on Spring Boot, to manage authentication like this. 
+
 `application.properties` file:
 ```properties
 # Any JWT distributed will expire in 600 seconds (10 minutes) 

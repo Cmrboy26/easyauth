@@ -1,7 +1,5 @@
 package net.cmr.easyauth.entity;
 
-import org.springframework.security.crypto.bcrypt.BCrypt;
-
 public class RegisterRequest {
     
     private String email;

@@ -3,20 +3,16 @@ package net.cmr.easyauth.controller;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
 
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import net.cmr.easyauth.entity.ElevateRequest;
+import net.cmr.easyauth.entity.AdminRequest;
 import net.cmr.easyauth.entity.Login;
 import net.cmr.easyauth.entity.LoginRequest;
 import net.cmr.easyauth.entity.RegisterRequest;
@@ -65,7 +61,7 @@ public abstract class AbstractAuthenticationController {
 
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/auth/admin/all")
-    public @ResponseBody List<Login> all(
+    public List<Login> listAll(
             @RequestParam(required = false, defaultValue = "0", name = "page") int pageNumber,
             @RequestParam(required = false, defaultValue = "10", name = "entries") int entries) {
         return loginRepository.getView(pageNumber * entries, (pageNumber + 1) * entries - 1);
@@ -73,8 +69,14 @@ public abstract class AbstractAuthenticationController {
 
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/auth/admin/elevate")
-    public CompletableFuture<ResponseEntity<String>> elevate(@RequestBody ElevateRequest elevateRequest) {
+    public CompletableFuture<ResponseEntity<String>> elevateUser(@RequestBody AdminRequest elevateRequest) {
         return loginService.elevateRole(elevateRequest);
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/auth/admin/lock")
+    public CompletableFuture<ResponseEntity<String>> lockUser(@RequestBody AdminRequest elevateRequest) {
+        return loginService.lockUser(elevateRequest);
     }
 
 }

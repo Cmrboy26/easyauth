@@ -1,8 +1,10 @@
 package net.cmr.easyauth.controller;
 
-import org.slf4j.Logger;
+import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.MethodParameter;
+import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.support.WebDataBinderFactory;
@@ -27,14 +29,14 @@ public class AuthContextualizerResolver implements HandlerMethodArgumentResolver
     }
 
     @Override
-    public boolean supportsParameter(MethodParameter parameter) {
+    public boolean supportsParameter(@NonNull MethodParameter parameter) {
         return parameter.hasParameterAnnotation(AuthContextualize.class) && parameter.getParameterType().equals(AuthContext.class);
     }
 
     @Override
     @Nullable
-    public Object resolveArgument(MethodParameter parameter, @Nullable ModelAndViewContainer mavContainer,
-            NativeWebRequest webRequest, @Nullable WebDataBinderFactory binderFactory) throws Exception {
+    public Object resolveArgument(@NonNull MethodParameter parameter, @Nullable ModelAndViewContainer mavContainer,
+            @NonNull NativeWebRequest webRequest, @Nullable WebDataBinderFactory binderFactory) throws Exception {
         AuthContext context = new AuthContext();
 
         if (!(webRequest.getNativeRequest() instanceof HttpServletRequest)) {
@@ -46,16 +48,20 @@ public class AuthContextualizerResolver implements HandlerMethodArgumentResolver
         if (jwt == null) {
             return null;
         }
-        String combinedCredentials = LoginService.getCombinedCredentialFromJwt(jwt);
-        String email = Login.getEmailFromCombinedCredential(combinedCredentials);
-        String username = Login.getUsernameFromCombinedCredential(combinedCredentials);
+        String idString = LoginService.getIdFromJwt(jwt);
+        Long id = null;
+        try {
+            id = Long.parseLong(idString);
+        } catch (NumberFormatException e) {
+            return null;
+        }
 
-        Login login = loginRepository.findByUsernameOrEmail(username, email);
-        if (login == null) {
+        Optional<Login> login = loginRepository.findById(id);
+        if (login.isEmpty()) {
             return context;
         }
         context.setJwt(jwt);
-        context.setLogin(login);
+        context.setLogin(login.get());
 
         return context;
     }

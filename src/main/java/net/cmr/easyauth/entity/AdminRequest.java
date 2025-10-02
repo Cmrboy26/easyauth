@@ -3,18 +3,18 @@ package net.cmr.easyauth.entity;
 /**
  * Used by admins to elevate the role of any user.
  */
-public class ElevateRequest {
+public class AdminRequest {
     
-    private String role;
+    private String value;
     private String primaryCredential;
     
-    public ElevateRequest(String primaryCredential, String role) {
+    public AdminRequest(String primaryCredential, String value) {
         this.primaryCredential = primaryCredential;
-        this.role = role;
+        this.value = value;
     }
 
-    public String getRole() {
-        return role;
+    public String getValue() {
+        return value;
     }
 
     public String getPrimaryCredential() {
