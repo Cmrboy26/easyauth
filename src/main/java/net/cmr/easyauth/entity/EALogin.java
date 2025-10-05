@@ -40,7 +40,7 @@ public abstract class EALogin {
     )
     private List<EAAuthority> authorities = new ArrayList<>();
 
-    protected EALogin() { }
+    public EALogin() { }
 
     public EALogin(String username, String password) {
         this.username = username;
@@ -77,5 +77,10 @@ public abstract class EALogin {
     public boolean hasAuthority(String authorityValue) {
         return authorities.stream()
             .anyMatch(auth -> authorityValue.equals(auth.getAuthorityValue()));
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return obj instanceof EALogin && ((EALogin) obj).getId() == getId();
     }
 }

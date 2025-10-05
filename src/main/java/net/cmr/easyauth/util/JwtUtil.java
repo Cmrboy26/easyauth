@@ -21,7 +21,7 @@ public class JwtUtil {
     @Value("{cmr.easyauth.enableAccessTokens:true}")
     public static boolean accessTokensEnabled;
     @Value("${net.cmr.easyauth.jwtSecretKey:AUTOGENERATE}")    
-    private String secretKeyConfiguration;
+    private static String secretKeyConfiguration;
     private static SecretKey secretKey;
 
     public static final Logger logger = LoggerFactory.getLogger(JwtUtil.class);
@@ -52,17 +52,17 @@ public class JwtUtil {
         return Boolean.valueOf(Jwts.parserBuilder()
             .setSigningKey(secretKey)
             .build()
-            .parseClaimsJwt(jwt)
+            .parseClaimsJws(jwt)
             .getBody()
             .getSubject()
-            .toString());
+            .toString()) == accessToken;
     }
 
     public static long getId(String jwt) {
         return Long.valueOf(Jwts.parserBuilder()
             .setSigningKey(secretKey)
             .build()
-            .parseClaimsJwt(jwt)
+            .parseClaimsJws(jwt)
             .getBody()
             .getId());
     }

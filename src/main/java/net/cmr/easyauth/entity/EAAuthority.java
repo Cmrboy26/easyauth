@@ -1,15 +1,17 @@
 package net.cmr.easyauth.entity;
 
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
 
-@MappedSuperclass
-public abstract class EAAuthority {
+@Entity
+public class EAAuthority {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -36,7 +38,9 @@ public abstract class EAAuthority {
         this.authorityValue = authorityValue;
     }
 
-    public abstract GrantedAuthority generateAuthority();
+    public GrantedAuthority generateAuthority() {
+        return new SimpleGrantedAuthority(authorityValue);
+    }
 
     @Override
     public boolean equals(Object obj) {
