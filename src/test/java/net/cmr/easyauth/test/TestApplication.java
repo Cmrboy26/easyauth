@@ -8,6 +8,7 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.test.context.ActiveProfiles;
 
 @Profile("test")
 @SpringBootConfiguration
@@ -17,6 +18,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 @EnableJpaRepositories("net.cmr.easyauth")
 public class TestApplication {
     public static void main(String[] args) {
+        System.setProperty("spring.profiles.active", "test");
         SpringApplication.run(TestApplication.class, args);
     }
 }

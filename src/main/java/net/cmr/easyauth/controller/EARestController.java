@@ -12,6 +12,7 @@ public abstract class EARestController<L extends EALogin> {
     private EALoginService<L> loginService;
 
     private void register() {
+        
         // Check if able to add, provides both REFRESH and ACCESS token as cookies, REFRESH token as body
         // Accessable by ANYONE
     }

@@ -79,7 +79,7 @@ public class JwtAuthenticationFilter<L extends EALogin> extends OncePerRequestFi
      * @return the stored JWT from the header and cookies, otherwise null if not type not present in either.
      * If the JWT is not valid, tampered, or isn't the correct type, then null will be returned. 
      */
-    private String extractValidJwt(HttpServletRequest request, boolean accessToken) {
+    public static String extractValidJwt(HttpServletRequest request, boolean accessToken) {
         String jwtFromCookie = CookieUtil.getJwtFromCookies(request, accessToken);
         String jwtFromHeader = HeaderUtil.getJwtFromHeader(request);
         String[] checkOrder = new String[2];

@@ -1,6 +1,7 @@
 package net.cmr.easyauth.util;
 
 import java.util.Base64;
+import java.util.Date;
 import java.util.Map;
 
 import javax.crypto.SecretKey;
@@ -18,11 +19,15 @@ import net.cmr.easyauth.entity.EALogin;
 
 public class JwtUtil {
     
-    @Value("{cmr.easyauth.enableAccessTokens:true}")
-    public static boolean accessTokensEnabled;
-    @Value("${net.cmr.easyauth.jwtSecretKey:AUTOGENERATE}")    
+    /*@Value("{cmr.easyauth.enableAccessTokens:true}")
+    public static boolean accessTokensEnabled;*/
+    @Value("${cmr.easyauth.jwtSecretKey:AUTOGENERATE}")    
     private static String secretKeyConfiguration;
     private static SecretKey secretKey;
+    @Value("${cmr.easyauth.refreshExpirationTime:36000}")
+    private static int refreshExpirationTime;
+    @Value("${cmr.easyauth.accessExpirationTime:3600}")
+    private static int accessExpirationTime;
 
     public static final Logger logger = LoggerFactory.getLogger(JwtUtil.class);
     
@@ -41,9 +46,20 @@ public class JwtUtil {
     }
 
     public static String signJwt(EALogin login, boolean accessToken) {
+        return signJwt(login, accessToken ? accessExpirationTime : refreshExpirationTime, accessToken);
+    }
+
+    /**
+     * @param login login to generate the token for
+     * @param expirationTime the time, in seconds, that the token will expire from the current moment
+     * @param accessToken true if the generated token will be an access token, false for refresh
+     * @return
+     */
+    public static String signJwt(EALogin login, int expirationTime, boolean accessToken) {
         return Jwts.builder()
             .signWith(secretKey)
             .setSubject(Boolean.toString(accessToken))
+            .setExpiration(new Date(System.currentTimeMillis() + 1000 * expirationTime))
             .setId(login.getId().toString())
             .compact();
     }

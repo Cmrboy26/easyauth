@@ -10,8 +10,10 @@ import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Optional;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -26,6 +28,8 @@ import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.transaction.Transactional;
+import net.cmr.easyauth.entity.EAAuthority;
 import net.cmr.easyauth.test.TestApplication;
 import net.cmr.easyauth.test.TestLogin;
 import net.cmr.easyauth.test.TestLoginService;
@@ -36,6 +40,7 @@ import net.cmr.easyauth.util.JwtUtil;
 
 @SpringBootTest(classes = TestApplication.class)
 @ActiveProfiles("test")
+@DisplayName("EasyAuth Application Tests")
 class EasyAuthApplicationTests {
 
 	@Value("${test.key}")
@@ -46,6 +51,7 @@ class EasyAuthApplicationTests {
 	@Autowired private TestLoginService loginService;
 
 	@BeforeAll
+	@DisplayName("Set up JwtUtil secret key")
 	static void setUpJwtUtil() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
 		Field secretKeyField = JwtUtil.class.getDeclaredField("secretKey");
 		secretKeyField.setAccessible(true);
@@ -54,6 +60,7 @@ class EasyAuthApplicationTests {
 
 	@Test
 	@BeforeEach
+	@DisplayName("Context loads and beans are injected")
 	void contextLoads() {
 		assertEquals(test, "value");
 		assertNotNull(repository);
@@ -62,8 +69,9 @@ class EasyAuthApplicationTests {
 	}
 
 	@Test
+	@DisplayName("Repository should read and write TestLogin objects correctly")
 	void repositoryReadWrites() {
-		TestLogin login = new TestLogin("username123", "password123");
+		TestLogin login = new TestLogin("username1", "password1");
 		repository.save(login);
 		Optional<TestLogin> readLogin = repository.findById(login.getId());
 		assertTrue(readLogin.isPresent());
@@ -74,8 +82,9 @@ class EasyAuthApplicationTests {
 	}
 
 	@Test
+	@DisplayName("JWT signs tokens properly")
 	void jwtSignsProperly() throws Exception {
-		TestLogin login = new TestLogin("username123", "password123");
+		TestLogin login = new TestLogin("username2", "password2");
 		setTestLoginId(login, 23502);
 		String refreshToken = JwtUtil.signJwt(login, false);
 		String accessToken = JwtUtil.signJwt(login, true);
@@ -84,8 +93,9 @@ class EasyAuthApplicationTests {
 	}
 
 	@Test
+	@DisplayName("Get user from JWT tokens")
 	void getUserFromJwt() throws Exception {
-		TestLogin login = new TestLogin("username123", "password123");
+		TestLogin login = new TestLogin("username3", "password3");
 		repository.save(login);
 		String refreshToken = JwtUtil.signJwt(login, false);
 		String accessToken = JwtUtil.signJwt(login, true);
@@ -107,8 +117,9 @@ class EasyAuthApplicationTests {
 	}
 
 	@Test
+	@DisplayName("Get JWT from cookies")
 	void testGettingJwtFromCookies() throws Exception {
-		TestLogin login = new TestLogin("username123", "password123");
+		TestLogin login = new TestLogin("username4", "password4");
 		setTestLoginId(login, 234);
 		String accessToken = JwtUtil.signJwt(login, true);
 		String requestToken = JwtUtil.signJwt(login, false);
@@ -143,11 +154,34 @@ class EasyAuthApplicationTests {
 		assertEquals(null, CookieUtil.getJwtFromCookies(mockHttp, false));
 	}
 
+	@Test
+	@Transactional
+	@DisplayName("Cascade operations with authorities")
+	void cascadeOperationsTest() {
+		TestLogin login = new TestLogin("cascadeUser", "password");
+		EAAuthority authority = new EAAuthority("CASCADE_TEST");
+		
+		login.addAuthority(authority);
+		repository.save(login);
+		
+		// Both login and authority should be saved due to cascade
+		Optional<TestLogin> savedLogin = repository.findById(login.getId());
+		assertTrue(savedLogin.isPresent());
+		assertTrue(savedLogin.get().hasAuthority("CASCADE_TEST"));
+	}
+
 	// Helper methods
+	@DisplayName("Set TestLogin id using reflection")
 	private void setTestLoginId(TestLogin login, long id) throws Exception {
 		Field idField = login.getClass().getSuperclass().getDeclaredField("id");
 		idField.setAccessible(true);
 		idField.set(login, id);
+	}
+
+	@AfterEach
+	@DisplayName("Clean up repository after each test")
+	void cleanUp() {
+		repository.deleteAll();
 	}
 
 }
