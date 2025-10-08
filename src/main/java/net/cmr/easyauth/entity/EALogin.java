@@ -2,6 +2,7 @@ package net.cmr.easyauth.entity;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.security.crypto.bcrypt.BCrypt;
 
@@ -15,6 +16,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.MappedSuperclass;
+import net.cmr.easyauth.util.NonNullMap;
+import net.cmr.easyauth.util.NonNullMap.NullValueException;
 
 @MappedSuperclass
 public abstract class EALogin {
@@ -29,7 +32,7 @@ public abstract class EALogin {
     /**
      * User password hashed by BCrypt
      */
-    @Column(name = "password", nullable = false)
+    @Column(name = "password", nullable = false, unique = true)
     private String password;
 
     @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
@@ -42,9 +45,15 @@ public abstract class EALogin {
 
     public EALogin() { }
 
-    public EALogin(String username, String password) {
-        this.username = username;
-        this.password = hashPassword(password);
+    /**
+     * Constructs a login using the provided registerParams map, which contains
+     * client-supplied key-value pairs. Input should be validated for safety.
+     * @param registerParams map of registration parameters
+     * @throws NullValueException if required values are missing
+     */
+    public EALogin(Map<String, String> registerParams) throws NullValueException {
+        this.username = registerParams.get("username");
+        this.password = hashPassword(registerParams.get("password"));
     }
 
     protected String hashPassword(String password) {
@@ -55,7 +64,6 @@ public abstract class EALogin {
     public boolean checkPassword(String testPassword) {
         return BCrypt.checkpw(testPassword, password);
     }
-
 
     public Long getId() { return id; }
     public String getUsername() { return username; }

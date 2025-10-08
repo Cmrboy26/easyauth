@@ -11,29 +11,39 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.security.oauth2.resource.OAuth2ResourceServerProperties.Jwt;
+import org.springframework.stereotype.Component;
 
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import net.cmr.easyauth.entity.EALogin;
 
+@Component
 public class JwtUtil {
     
-    /*@Value("{cmr.easyauth.enableAccessTokens:true}")
-    public static boolean accessTokensEnabled;*/
-    @Value("${cmr.easyauth.jwtSecretKey:AUTOGENERATE}")    
-    private static String secretKeyConfiguration;
     private static SecretKey secretKey;
-    @Value("${cmr.easyauth.refreshExpirationTime:36000}")
-    private static int refreshExpirationTime;
-    @Value("${cmr.easyauth.accessExpirationTime:3600}")
-    private static int accessExpirationTime;
+
+    public static int refreshExpirationTime;
+    public static int accessExpirationTime;
 
     public static final Logger logger = LoggerFactory.getLogger(JwtUtil.class);
     
+    @Value("${cmr.easyauth.refreshExpirationTime:36000}")
+    public void setRefreshExpirationTime(int refreshExpirationTime) {
+        JwtUtil.refreshExpirationTime = refreshExpirationTime;
+        logger.info("Refresh token expiration time: "+refreshExpirationTime);
+    }
+    
+    @Value("${cmr.easyauth.accessExpirationTime:3600}")
+    public void setAccessExpirationTime(int accessExpirationTime) {
+        JwtUtil.accessExpirationTime = accessExpirationTime;
+        logger.info("Access token expiration time: "+accessExpirationTime);
+    }
+
     @Autowired
-    public void setSecret() {
-        if (secretKeyConfiguration.equals("AUTOGENERATE")) {
+    @Value("${cmr.easyauth.jwtSecretKey:AUTOGENERATE}")
+    public void setSecret(String secretKeyConfiguration) {
+        if ("AUTOGENERATE".equals(secretKeyConfiguration)) {
             logger.info("Autogenerating JWT secret key...");
             secretKey = Keys.secretKeyFor(SignatureAlgorithm.HS256);
             String base64String = Base64.getEncoder().encodeToString(secretKey.getEncoded());

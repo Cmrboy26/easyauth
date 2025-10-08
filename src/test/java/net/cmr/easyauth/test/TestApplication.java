@@ -8,11 +8,11 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-import org.springframework.test.context.ActiveProfiles;
 
-@Profile("test")
+
 @SpringBootConfiguration
 @EnableAutoConfiguration
+@Profile("test")
 @EntityScan(basePackages = {"net.cmr.easyauth"}) // Scan the entire easyauth package
 @ComponentScan("net.cmr.easyauth")
 @EnableJpaRepositories("net.cmr.easyauth")

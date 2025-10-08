@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Login</title>
+        <script>
+            async function login() {
+                const data = {
+                    username: document.getElementById("username").value,
+                    password: document.getElementById("password").value
+                };
+                const loginMessage = document.getElementById("login-message");
+                try {
+                    const response = await fetch("/auth/login", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(data),
+                        credentials: 'include'
+                    });
+
+                    const result = await response.json();
+
+                    if (!response.ok) {
+                        loginMessage.style.backgroundColor = "#ff6e6e";
+                        loginMessage.textContent = result.message || `Error: status ${response.status}`;
+                        throw new Error(result.message || `Error: status ${response.status}`);
+                    }
+
+                    const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+                        const [key, value] = cookie.trim().split('=');
+                        acc[key] = value;
+                        return acc;
+                    }, {});
+                    if (cookies.accessToken) localStorage.setItem('accessToken', cookies.accessToken);
+                    if (cookies.refreshToken) localStorage.setItem('refreshToken', cookies.refreshToken);
+
+                    loginMessage.style.backgroundColor = "lightgreen";
+                    loginMessage.textContent = "Logged in!";
+                    console.log('Login success');
+                } catch (error) {
+                    console.error(error);
+                }
+            }
+
+            document.addEventListener("DOMContentLoaded", function() {
+                document.getElementById("submit").onclick = function (e) {
+                    e.preventDefault();
+                    login();
+                };
+            });
+        </script>
+    </head>
+    <body>
+        <h1>Login</h1>
+        <p id="login-message" style="padding: 10px; margin: 15px;"></p>
+        <label for="username" style="display:inline-block; width:80px;">Username:</label>
+        <input type="text" id="username" name="username"><br><br>
+        <label for="password" style="display:inline-block; width:80px;">Password:</label>
+        <input type="password" id="password" name="password">
+        <br>
+        <br>
+        <label for="submit" style="display:inline-block; width:80px; padding-top:10px;"></label>
+        <button id="submit" style="width:170px">Submit</button>
+    </body>
+</html>

@@ -55,4 +55,9 @@ public class EAAuthority {
         return authorityValue != null ? authorityValue.hashCode() : 0;
     }
 
+    @Override
+    public String toString() {
+        return authorityValue;
+    }
+
 }

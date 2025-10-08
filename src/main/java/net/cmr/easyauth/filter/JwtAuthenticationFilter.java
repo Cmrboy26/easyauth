@@ -16,6 +16,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,48 +29,63 @@ import net.cmr.easyauth.util.HeaderUtil;
 import net.cmr.easyauth.util.JwtUtil;
 
 @Component
-public class JwtAuthenticationFilter<L extends EALogin> extends OncePerRequestFilter {
+public class JwtAuthenticationFilter extends OncePerRequestFilter {
     
-    @Autowired(required = false)
-    private EALoginService<L> loginService;
-    @Value("{cmr.easyauth.prioritizeHeaders:true}")
+    private final EALoginService<? extends EALogin> loginService;
+
+    @Autowired
+    public JwtAuthenticationFilter(EALoginService<? extends EALogin> loginService) {
+        this.loginService = loginService;
+    }
+
     private static boolean prioritizeHeaders;
+
+    @Value("{cmr.easyauth.prioritizeHeaders:true}")
+    private void setPrioritizeHeaders(String prioritizeHeaders) {
+        JwtAuthenticationFilter.prioritizeHeaders = Boolean.valueOf(prioritizeHeaders);
+    }
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain)
             throws ServletException, IOException {
         if (loginService != null) {
             // These tokens are validated
-            String jwtRefreshToken = extractValidJwt(request, false);
-            String jwtAccessToken = extractValidJwt(request, true);
-            if (jwtAccessToken != null) {
-                // Get user using valid JWT token
-                Optional<L> login = loginService.getUserFromJwt(jwtAccessToken, jwtRefreshToken);
-                if (login != null && login.isPresent()) {
-                    setAuthenticationContext(login.get(), jwtAccessToken, jwtRefreshToken);
+            try {
+                String jwtRefreshToken = extractValidJwt(request, false);
+                String jwtAccessToken = extractValidJwt(request, true);
+                if (jwtAccessToken != null || jwtRefreshToken != null) {
+                    System.out.println("Valid token found...");
+                    // Get user using valid JWT token
+                    Optional<? extends EALogin> login = loginService.getUserFromJwt(jwtAccessToken, jwtRefreshToken);
+                    if (login != null && login.isPresent()) {
+                        setAuthenticationContext(login.get(), jwtAccessToken, jwtRefreshToken);
+                    }
                 }
+            } catch (JwtException e) {
+                // Something is wrong with the JWT, don't authenticate
             }
         }
         filterChain.doFilter(request, response);
     }
 
-    private void setAuthenticationContext(L login, String jwtAccessToken, String jwtRefreshToken) {
+    private void setAuthenticationContext(EALogin login, String jwtAccessToken, String jwtRefreshToken) {
         List<GrantedAuthority> authorities = calculateAuthorities(login, jwtAccessToken, jwtRefreshToken);
         Authentication auth = new UsernamePasswordAuthenticationToken(login.getUsername(), null, authorities);
         SecurityContextHolder.getContext().setAuthentication(auth);
     }
     
-    private List<GrantedAuthority> calculateAuthorities(L login, String jwtAccessToken, String jwtRefreshToken) {
+    private List<GrantedAuthority> calculateAuthorities(EALogin login, String jwtAccessToken, String jwtRefreshToken) {
         List<GrantedAuthority> authorities = new ArrayList<>();
-        for (EAAuthority authority : login.getAuthorities()) {
-            authorities.add(authority.generateAuthority());
-        }   
         if (jwtAccessToken != null) {
-            authorities.add(new SimpleGrantedAuthority("ACCESS"));
+            authorities.add(new SimpleGrantedAuthority("ACCESS"));  
+            for (EAAuthority authority : login.getAuthorities()) {
+                authorities.add(authority.generateAuthority());
+            }   
         }
         if (jwtRefreshToken != null) {
             authorities.add(new SimpleGrantedAuthority("REFRESH"));
         }
+        System.out.println(authorities);
         return authorities;
     }
 
@@ -88,9 +104,15 @@ public class JwtAuthenticationFilter<L extends EALogin> extends OncePerRequestFi
         checkOrder[1 - prioritizeOffset] = jwtFromHeader;
         for (String jwt : checkOrder) {
             // Verify if the token is the specified value of accessToken
-            boolean isValidType = JwtUtil.isTokenType(jwt, accessToken); 
-            if (isValidType) {
-                return jwt;
+            try {
+                boolean isValidType = JwtUtil.isTokenType(jwt, accessToken); 
+                if (isValidType) {
+                    return jwt;
+                }
+            } catch (JwtException e) {
+                
+            } catch (IllegalArgumentException e) {
+                
             }
         }
         return null;
